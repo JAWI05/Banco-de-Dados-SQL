@@ -1,0 +1,369 @@
+CREATE TRIGGER trg_bloqueio_nome_aqui
+BEFORE INSERT ON Nome_Da_Tabela  -- Ou BEFORE UPDATE / BEFORE DELETE
+FOR EACH ROW
+WHEN (NEW.Nome_Coluna < 0) -- Coloque sua condição de ERRO aqui
+BEGIN
+    SELECT RAISE(ABORT, 'Mensagem de erro: Valor não permitido!');
+END;
+
+
+
+CREATE TRIGGER trg_auditoria_nome_aqui
+AFTER UPDATE OF Coluna_Monitorada ON Tabela_Original
+FOR EACH ROW
+WHEN OLD.Coluna_Monitorada != NEW.Coluna_Monitorada -- Só grava se mudou
+BEGIN
+    INSERT INTO Tabela_Historico (
+        Id_Referencia, 
+        Valor_Antigo, 
+        Valor_Novo, 
+        Data_Mudanca
+    )
+    VALUES (
+        OLD.Id, 
+        OLD.Coluna_Monitorada, 
+        NEW.Coluna_Monitorada, 
+        DATETIME('now') -- ou CURRENT_TIMESTAMP
+    );
+END;
+
+
+
+CREATE TRIGGER trg_automacao_status
+AFTER DELETE ON Tabela_Alocacao
+FOR EACH ROW
+-- Verifica se a contagem zerou após o delete
+WHEN (SELECT COUNT(*) FROM Tabela_Alocacao WHERE Id_Projeto = OLD.Id_Projeto) = 0
+BEGIN
+    UPDATE Tabela_Projetos
+    SET Status = 'Inativo'
+    WHERE Id_Projeto = OLD.Id_Projeto;
+END;
+
+
+
+WITH Calculo_Media AS (
+    -- Passo 1: Calcular os dados agregados (médias, contagens)
+    SELECT 
+        Cod_Depto, 
+        AVG(Salario) as Media_Salario
+    FROM Empregados
+    GROUP BY Cod_Depto
+)
+-- Passo 2: Cruzar com a tabela principal
+SELECT 
+    e.Nome, 
+    e.Salario, 
+    c.Media_Salario
+FROM Empregados e
+JOIN Calculo_Media c ON e.Cod_Depto = c.Cod_Depto
+WHERE e.Salario > c.Media_Salario;
+
+
+
+CREATE TRIGGER trg_corrige_salario
+BEFORE UPDATE OF salario ON funcionario -- Tem que ser BEFORE
+FOR EACH ROW
+BEGIN
+    IF NEW.salario < 2000 THEN
+        NEW.salario := NEW.salario * 1.10; -- Usa-se NEW.coluna
+    ELSE
+        NEW.salario := NEW.salario * 1.05;
+    END IF;
+END;
+
+
+
+CREATE TRIGGER bloquear_data_impossivel
+BEFORE INSERT OR UPDATE ON Projetos  -- Adicionado UPDATE e nome da tabela
+FOR EACH ROW
+WHEN NEW.Data_Fim < NEW.Data_Inicio  -- Adicionado o prefixo NEW.
+BEGIN
+    SELECT RAISE(ABORT, 'Data impossível: Fim antes do Início');
+END;
+
+
+
+-- Trigger para INSERT
+CREATE TRIGGER trg_salario_positivo_insert
+BEFORE INSERT ON Empregados
+FOR EACH ROW
+WHEN NEW.Salario <= 0
+BEGIN
+    SELECT RAISE(ABORT, 'O salário deve ser um valor positivo.');
+END;
+
+
+-- Trigger para UPDATE
+CREATE TRIGGER trg_salario_positivo_update
+BEFORE UPDATE OF Salario ON Empregados
+FOR EACH ROW
+WHEN NEW.Salario <= 0
+BEGIN
+    SELECT RAISE(ABORT, 'O salário deve ser um valor positivo.');
+END;
+
+
+
+-- Trigger para INSERT
+CREATE TRIGGER trg_datas_projeto_validas_insert
+BEFORE INSERT ON Projetos
+FOR EACH ROW
+WHEN NEW.DataFim_proj IS NOT NULL AND NEW.DataFim_proj < NEW.DataIni_proj
+BEGIN
+    SELECT RAISE(ABORT, 'A data de fim do projeto não pode ser anterior à data de início.');
+END;
+
+
+-- Trigger para UPDATE
+CREATE TRIGGER trg_datas_projeto_validas_update
+BEFORE UPDATE OF DataIni_proj, DataFim_proj ON Projetos
+FOR EACH ROW
+WHEN NEW.DataFim_proj IS NOT NULL AND NEW.DataFim_proj < NEW.DataIni_proj
+BEGIN
+    SELECT RAISE(ABORT, 'A data de fim do projeto não pode ser anterior à data de início.');
+END;
+
+
+
+CREATE VIEW vw_empregados_departamentos AS
+SELECT
+    e.Id_emp,
+    e.Nome,
+    e.Sobrenome,
+    e.Salario,
+    d.Nome_dep,
+    d.Regiao_dep
+FROM
+    Empregados e
+JOIN
+    Departamentos d ON e.Cod_dep = d.Cod_dep;
+
+
+CREATE VIEW vw_alocacao_projetos AS
+SELECT
+    e.Nome || ' ' || e.Sobrenome AS Nome_Empregado,
+    p.Descr_proj AS Nome_Projeto,
+    p.DataIni_proj AS Inicio_Projeto,
+    p.DataFim_proj AS Fim_Projeto
+FROM
+    Alocacao a
+JOIN
+    Empregados e ON a.Id_emp = e.Id_emp
+JOIN
+    Projetos p ON a.Cod_proj = p.Cod_proj;
+
+
+CREATE VIEW vw_resumo_salarial_departamento AS
+SELECT
+    d.Nome_dep,
+    COUNT(e.Id_emp) AS Total_Empregados,
+    SUM(e.Salario) AS Salario_Total,
+    AVG(e.Salario) AS Salario_Medio
+FROM
+    Departamentos d
+LEFT JOIN
+    Empregados e ON d.Cod_dep = e.Cod_dep
+GROUP BY
+    d.Nome_dep;
+
+
+CREATE TRIGGER registrar_transferencia_departamento
+AFTER UPDATE OF Cod_Depto ON Empregados
+FOR EACH ROW
+WHEN NEW.Cod_Depto != OLD.Cod_Depto
+BEGIN
+ INSERT INTO Transferencias (Id_Emp, Cod_Depto_Antigo, Cod_Depto_Novo)
+ VALUES (OLD.Id_Emp, OLD.Cod_Depto, NEW.Cod_Depto);
+END;
+-- Para testar:
+-- Passo 1: Insira um exemplo na tabela Empregados (caso não exista um).
+INSERT INTO Empregados (Nome, Sobrenome, Salario, Cod_Depto) VALUES
+('Pedro', 'Silva', 3000, 1);
+-- Passo 2: Atualize o departamento do empregado para simular uma transferência.
+UPDATE Empregados
+SET Cod_Depto = 2 -- Novo departamento
+WHERE Nome = 'Pedro' AND Sobrenome = 'Silva';
+-- Passo 3: Verifique a tabela Transferencias para confirmar o registro da transferência.
+SELECT * FROM Transferencias WHERE Id_Emp = (SELECT Id_Emp FROM Empregados
+WHERE Nome = 'Pedro' AND Sobrenome = 'Silva');
+
+
+ALTER TABLE Projetos ADD COLUMN Status TEXT DEFAULT 'Ativo';
+-- Depois criamos o Trigger para atualizar o status
+CREATE TRIGGER atualizar_status_projeto
+AFTER DELETE ON Alocacao
+FOR EACH ROW
+WHEN (SELECT COUNT(*) FROM Alocacao WHERE Cod_Proj = OLD.Cod_Proj) = 0
+BEGIN
+ UPDATE Projetos
+ SET Status = 'Inativo'
+ WHERE Cod_Proj = OLD.Cod_Proj;
+END;
+-- Para testar
+-- Passo 1: Vemos o status do projeto de número XXX, atualmente ativo
+Select *
+From Projetos p
+WHERE Cod_Proj = 35;
+-- Passo 2: Na tabela alocação, deletamos todos os registros de funcionários associados
+a esse projeto XXX
+DELETE FROM Alocacao WHERE Cod_Proj = 35;
+-- Passo 3: Agora vemos que o status do projeto mudou para inativo, ou seja, o gatilho foi disparado
+select *
+FROM Projetos p
+WHERE Cod_Proj = 35;
+(trigger de bloqueio de redução Salarial)
+
+
+
+-- Criamos o trigger para impedir reduções salariais
+CREATE TRIGGER bloquear_reducao_salario
+BEFORE UPDATE OF Salario ON Empregados
+FOR EACH ROW
+WHEN NEW.Salario < OLD.Salario
+BEGIN
+ SELECT RAISE(ABORT, 'Erro: Redução de salário não é permitida.');
+END;
+-- Ao tentar a redução de salário de um funcionário, vemos que um erro é exibido e o
+código interrompido.
+UPDATE Empregados
+SET Salario = 3500
+WHERE Nome = 'Darlene' AND Sobrenome = 'Warner';
+
+
+
+
+
+
+
+
+CREATE TRIGGER bloquear_reducao_salario
+BEFORE UPDATE OF Salario ON Empregados
+FOR EACH ROW
+WHEN NEW.Salario < OLD.Salario
+BEGIN
+    SELECT RAISE(ABORT, 'Erro: Redução de salário não é permitida.');
+END;
+
+
+CREATE TRIGGER trg_valida_empregado_alocacao
+BEFORE INSERT ON Alocacao
+WHEN (SELECT COUNT(*) FROM Empregados WHERE Id_Emp = NEW.Id_Emp) = 0
+BEGIN
+    SELECT RAISE(ABORT, 'Empregado inexistente.');
+END;
+
+
+
+CREATE TRIGGER trg_impede_exclusao_departamento
+BEFORE DELETE ON Departamentos
+WHEN (SELECT COUNT(*) FROM Empregados WHERE Cod_Depto = OLD.Cod_Depto) > 0
+BEGIN
+    SELECT RAISE(ABORT, 'Não pode excluir: existem empregados vinculados.');
+END;
+
+
+
+-- Dentro da Function do Trigger
+IF NEW.nomeFunc IS NULL THEN RAISE EXCEPTION 'Nome não pode ser nulo'; END IF;
+
+CREATE TRIGGER registrar_transferencia_departamento
+AFTER UPDATE OF Cod_Depto ON Empregados
+FOR EACH ROW
+WHEN NEW.Cod_Depto != OLD.Cod_Depto -- Só se mudou mesmo
+BEGIN
+    INSERT INTO Transferencias (Id_Emp, Cod_Depto_Antigo, Cod_Depto_Novo)
+    VALUES (OLD.Id_Emp, OLD.Cod_Depto, NEW.Cod_Depto);
+END;
+
+
+
+CREATE TRIGGER atualizar_status_projeto
+AFTER DELETE ON Alocacao
+FOR EACH ROW
+WHEN (SELECT COUNT(*) FROM Alocacao WHERE Cod_Proj = OLD.Cod_Proj) = 0
+BEGIN
+    UPDATE Projetos SET Status = 'Inativo' WHERE Cod_Proj = OLD.Cod_Proj;
+END;
+
+CREATE TRIGGER new_emp
+AFTER INSERT ON employees
+FOR EACH ROW
+UPDATE employees SET empid = empid + 1; -- Cuidado com loops aqui!
+
+
+CREATE VIEW Analise_Estrategica_Depto AS
+SELECT
+    d.Nome_Depto,
+
+    -- 1. Contagem (Agregação Simples)
+    COUNT(p.Cod_Proj) AS Qtd_Projetos,
+
+    -- 2. Média (Agregação Simples)
+    AVG(e.Salario) AS Media_Salarial_Depto,
+
+    -- 3. Lógica Condicional (CASE WHEN)
+    CASE
+        WHEN SUM(p.Orcamento) > 1000000 THEN 'Alto Custo'
+        ELSE 'Normal'
+    END AS Classificacao_Orcamento,
+
+    -- 4. Subquery na Coluna (A parte mais difícil)
+    (AVG(e.Salario) - (SELECT AVG(Salario) FROM Empregados)) AS Comparativo_Salarial
+
+FROM Departamentos d
+LEFT JOIN Empregados e ON d.Cod_Depto = e.Cod_Depto
+LEFT JOIN Projetos p ON d.Cod_Depto = p.Cod_Depto
+GROUP BY d.Nome_Depto;
+
+
+
+CREATE VIEW Relatorio_Crise_Projetos AS
+SELECT
+    p.Descr_Proj,
+
+    -- 1. Cálculo de Datas (Exemplo genérico, no SQLite seria julianday) [cite: 680]
+    (p.DataFim_Proj - p.DataIni_Proj) AS Duracao_Dias,
+
+    -- 2. Agregação Simples
+    COUNT(a.Id_Emp) AS Total_Colaboradores,
+
+    -- 3. Lógica Condicional Complexa
+    CASE
+        WHEN COUNT(a.Id_Emp) > 5 AND (p.DataFim_Proj - p.DataIni_Proj) < 30 THEN 'Crítico (Superlotado)'
+        WHEN COUNT(a.Id_Emp) = 0 THEN 'Fantasma'
+        ELSE 'Regular'
+    END AS Status_Risco,
+
+    -- 4. Subquery de Cálculo (Total deste proj - Média Geral)
+    (COUNT(a.Id_Emp) - (SELECT COUNT(Id_Emp) / COUNT(DISTINCT Cod_Proj) FROM Alocacao)) AS Desvio_Media
+
+FROM Projetos p
+LEFT JOIN Alocacao a ON p.Cod_Proj = a.Cod_Proj -- LEFT JOIN para pegar projetos 'Fantasma' (sem alocação) [cite: 666]
+GROUP BY p.Descr_Proj, p.DataFim_Proj, p.DataIni_Proj;
+
+
+
+CREATE VIEW Performance_Gerentes AS
+WITH Resumo_Equipa AS (
+    -- CTE para calcular os totais antes de juntar com os nomes [cite: 713-715]
+    SELECT
+        Id_Supervisor,
+        COUNT(*) as Qtd_Subordinados,
+        SUM(Salario) as Custo_Total
+    FROM Empregados
+    WHERE Id_Supervisor IS NOT NULL
+    GROUP BY Id_Supervisor
+)
+SELECT
+    e.Nome AS Nome_Gerente,
+    r.Qtd_Subordinados,
+    r.Custo_Total,
+    CASE
+        WHEN r.Custo_Total > 50000 THEN 'Auditar'
+        ELSE 'OK'
+    END AS Alerta_Custo
+FROM Empregados e
+JOIN Resumo_Equipa r ON e.Id_Emp = r.Id_Supervisor; -- Join do funcionário com o resumo da sua equipe
+
+
