@@ -1,0 +1,296 @@
+CREATE TABLE Departamentos (
+	Cod_dep INTEGER PRIMARY KEY AUTOINCREMENT,
+	Nome_dep VARCHAR(100) NOT NULL,
+	Regiao_dep VARCHAR(50) NOT NULL
+);
+
+CREATE TABLE Empregados (
+	Id_emp INTEGER PRIMARY KEY AUTOINCREMENT,
+	Nome VARCHAR(100) NOT NULL,
+	Sobrenome VARCHAR(100) NOT NULL,
+	Salario DECIMAL(10,2) NOT NULL,
+	Cod_dep INT,
+	FOREIGN KEY (Cod_dep) REFERENCES Departamentos (Cod_dep)
+);
+
+CREATE TABLE Projetos (
+	Cod_proj INTEGER PRIMARY KEY AUTOINCREMENT,
+	Descr_proj VARCHAR(150) NOT NULL,
+	DataIni_proj DATE NOT NULL,
+	DataFim_proj DATE 
+);
+
+CREATE TABLE Alocacao (
+	Id_emp INT,
+	Cod_proj INT,
+	PRIMARY KEY (Id_emp, Cod_proj),
+	FOREIGN KEY (Id_emp) REFERENCES Empregados (Id_emp),
+	FOREIGN KEY (Cod_proj) REFERENCES Projetos (Cod_proj)
+);
+
+-- SQL DDL -> Criação (CREATE), Alteração (ALTER / DROP)
+
+-- SQL DDL - Modify -> INSERT, UPDATE, DELETE
+
+-- SQL DDL - Read -> SELECT, JOIN
+
+ALTER TABLE Projetos ADD COLUMN Status_Proj VARCHAR(10) DEFAULT "Ativo";
+
+ALTER TABLE Projetos ADD COLUMN CPF_Proj INTEGER(11);
+
+ALTER TABLE Projetos DROP COLUMN Status_Proj;
+
+DROP TABLE Projetos; 
+
+INSERT INTO Projetos VALUES (1, 'lindo', '2025-11-12', '2025-02-02');
+
+INSERT INTO Projetos (Descr_proj, DataIni_proj) Values ('lin', '2025-12-15');
+
+UPDATE Empregados SET Nome = 'José' WHERE Nome = 'John';
+
+UPDATE Empregados SET Sobrenome = 'Rei' WHERE Sobrenome = 'King';
+
+DELETE FROM Empregados WHERE Nome = 'José' OR Nome = 'Mary';
+
+DELETE FROM Empregados WHERE (Nome = 'Justin' AND Sobrenome = 'Jones') or Sobrenome = 'Berry';
+
+-- QUERY consulta SELECT
+
+-- SELECT - projeção / from - produto cartesiano / where - seleção do predicado
+
+SELECT Nome, Sobrenome FROM Empregados;
+
+SELECT * FROM Empregados;                              -- BUSCA COMPLETA
+
+SELECT * FROM Empregados WHERE Nome = 'Haley';
+
+SELECT Salario FROM Empregados;
+
+SELECT Nome LIKE 'J%' FROM Empregados;                 -- Nome que começa com J
+
+-- renomear as colunas na visualização   mostra os nomes que tem r
+
+SELECT Cod_depto as Numero, Nome_Depto as Nome FROM Departamentos AS D WHERE D.Nome_depto LIKE '%R%'; 
+
+SELECT Nome_Depto, Sobrenome FROM Departamentos, Empregados WHERE Departamentos.Cod_Depto = Empregados.Id_Emp;
+
+-- Junção Natural (NATURAL JOIN) -  une duas tabelas com base no mesmo nome de atributo e tipos de dados
+-- INNER JOIN (JOIN) intersecção - une duas tabelas com base em uma condição dada [+usada]
+-- LEFT JOIN, RIGTH JOI, FULL JOIN
+
+SELECT * FROM Empregados e JOIN Alocacao a ON e.Id_Emp = a.Id_Emp JOIN Projetos p ON a.Cod_Proj = p.Cod_Proj;
+
+--SELECT *
+
+--FROM Empregados e FULL JOIN trabalhadorTI
+
+SELECT p.Descr_Proj
+
+FROM Projetos p JOIN Alocacao a ON p.Cod_Proj = a.Cod_Proj JOIN Empregados e ON a.Id_Emp = e.Id_Emp 
+
+WHERE p.DataFim_Proj = '' AND e.Nome = 'Monica';
+
+SELECT Nome, Sobrenome FROM Empregados;
+
+SELECT * FROM Empregados WHERE Salario > 40000;
+
+SELECT Cod_Depto as Numero, Nome_Depto as Departamento FROM Departamentos;
+
+SELECT Nome, Sobrenome, Nome_Depto 
+
+FROM Empregados e JOIN Departamentos d ON e.Cod_Depto = d.Cod_Depto;
+
+SELECT Nome_Depto 
+
+FROM Departamentos WHERE Nome_Depto LIKE '%R%';
+
+INSERT INTO Empregados (Nome, Sobrenome, Salario, Cod_Depto) VALUES ('Lucas', 'Pereira', 3500, 1);
+
+UPDATE Empregados SET Salario = 4000 WHERE (Nome = 'Lucas' AND Sobrenome = 'Pereira');
+
+SELECT Descr_Proj, Nome 
+
+FROM Projetos p JOIN Alocacao a ON p.Cod_Proj = a.Cod_Proj 
+
+JOIN Empregados e ON e.Id_Emp = a.Id_Emp;
+
+SELECT e.Nome, e.Sobrenome 
+
+FROM Empregados e LEFT JOIN Alocacao a on e.Id_Emp = a.Id_Emp 
+
+WHERE Cod_Proj IS NULL;
+
+ALTER TABLE Empregados ADD COLUMN Email VARCHAR(50) NULL;
+
+ALTER TABLE Empregados DROP COLUMN Email;
+
+SELECT e.Salario, d.Nome_Depto 
+
+FROM Departamentos d JOIN Empregados e ON d.Cod_Depto = e.Cod_Depto 
+
+GROUP BY d.Nome_Depto;
+
+-- Problemas SQL (Revisão da Prova)
+-- Problema 1
+SELECT e.Nome, e.Sobrenome
+FROM Empregados e 
+JOIN Departamentos d 
+ON e.Cod_Depto = d.Cod_Depto 
+WHERE d.Nome_Depto = 'report';
+
+-- Problema 2
+SELECT d.Nome_Depto, avg(e.Salario) as Salario_Médio
+FROM Departamentos d 
+JOIN Empregados e ON d.Cod_Depto = e.Cod_Depto 
+GROUP BY d.Nome_Depto;
+
+-- Problema 3
+SELECT p.Cod_Proj, p.Descr_Proj 
+FROM Projetos p 
+JOIN Alocacao a ON p.Cod_Proj = a.Cod_Proj
+JOIN Empregados e ON a.Id_Emp = e.Id_Emp 
+WHERE e.Nome = "Monica";
+
+
+-- Problema 4
+SELECT p.Cod_Proj, p.Descr_Proj 
+FROM Projetos p 
+WHERE DataFim_Proj = '';
+
+-- Problema 5
+SELECT p.Cod_Proj, p.Descr_Proj, COUNT(e.Id_Emp) as Num_emp
+FROM Empregados e 
+JOIN Alocacao a ON a.Id_Emp = e.Id_Emp 
+RIGHT JOIN Projetos p ON a.Cod_Proj = p.Cod_Proj
+GROUP BY p.Cod_Proj;
+
+-- Problema 6
+SELECT 
+FROM Empregados e 
+JOIN Alocacao a ON e.Id_Emp = a.Id_Emp
+WHERE a.Cod_proj is null;
+
+-- Problema 7
+SELECT d.Nome_Depto, SUM(e.Salario) AS Salario_total
+FROM Departamentos d 
+JOIN Empregados e ON d.Cod_Depto = e.Cod_Depto 
+GROUP BY d.Nome_Depto;
+
+
+
+
+-- Trigger para INSERT
+CREATE TRIGGER trg_salario_positivo_insert
+BEFORE INSERT ON Empregados
+FOR EACH ROW
+WHEN NEW.Salario <= 0
+BEGIN
+    SELECT RAISE(ABORT, 'O salário deve ser um valor positivo.');
+END;
+
+-- Trigger para UPDATE
+CREATE TRIGGER trg_salario_positivo_update
+BEFORE UPDATE OF Salario ON Empregados
+FOR EACH ROW
+WHEN NEW.Salario <= 0
+BEGIN
+    SELECT RAISE(ABORT, 'O salário deve ser um valor positivo.');
+END;
+
+
+-- Trigger para INSERT
+CREATE TRIGGER trg_datas_projeto_validas_insert
+BEFORE INSERT ON Projetos
+FOR EACH ROW
+WHEN NEW.DataFim_proj IS NOT NULL AND NEW.DataFim_proj < NEW.DataIni_proj
+BEGIN
+    SELECT RAISE(ABORT, 'A data de fim do projeto não pode ser anterior à data de início.');
+END;
+
+-- Trigger para UPDATE
+CREATE TRIGGER trg_datas_projeto_validas_update
+BEFORE UPDATE OF DataIni_proj, DataFim_proj ON Projetos
+FOR EACH ROW
+WHEN NEW.DataFim_proj IS NOT NULL AND NEW.DataFim_proj < NEW.DataIni_proj
+BEGIN
+    SELECT RAISE(ABORT, 'A data de fim do projeto não pode ser anterior à data de início.');
+END;
+
+
+
+
+CREATE VIEW vw_empregados_departamentos AS
+SELECT
+    e.Id_emp,
+    e.Nome,
+    e.Sobrenome,
+    e.Salario,
+    d.Nome_dep,
+    d.Regiao_dep
+FROM
+    Empregados e
+JOIN
+    Departamentos d ON e.Cod_dep = d.Cod_dep;
+
+
+CREATE VIEW vw_alocacao_projetos AS
+SELECT
+    e.Nome || ' ' || e.Sobrenome AS Nome_Empregado,
+    p.Descr_proj AS Nome_Projeto,
+    p.DataIni_proj AS Inicio_Projeto,
+    p.DataFim_proj AS Fim_Projeto
+FROM
+    Alocacao a
+JOIN
+    Empregados e ON a.Id_emp = e.Id_emp
+JOIN
+    Projetos p ON a.Cod_proj = p.Cod_proj;
+
+
+CREATE VIEW vw_resumo_salarial_departamento AS
+SELECT
+    d.Nome_dep,
+    COUNT(e.Id_emp) AS Total_Empregados,
+    SUM(e.Salario) AS Salario_Total,
+    AVG(e.Salario) AS Salario_Medio
+FROM
+    Departamentos d
+LEFT JOIN
+    Empregados e ON d.Cod_dep = e.Cod_dep
+GROUP BY
+    d.Nome_dep;
+
+
+SELECT AVG(e.Salario ) as "Salario Médio", e.Nome 
+from Empregados e 
+join Departamentos d 
+ON e.Cod_dep = d.Cod_dep 
+GROUP BY d.Nome_dep 
+HAVING "Salario Médio" > 5000
+order by "Salario Médio" DESC;
+
+
+CREATE VIEW budget (NOME, ORCAMEN) AS
+SELECT PNOME, ORCAMEN
+FROM PROJ
+WHERE orcamen = 100000;
+
+
+CREATE VIEW FuncionarioProjeto AS
+SELECT e.Nome, e.Salario, p.Descr_Proj, p.DataIni_Proj
+FROM Empregados e
+JOIN Alocacao a ON e.Id_Emp = a.Id_Emp
+JOIN Projetos p ON a.Cod_Proj = p.Cod_Proj;
+
+
+CREATE VIEW ProjetosEmpregados AS
+SELECT p.Descr_Proj, COUNT(a.Id_Emp) AS numero_funcionarios
+FROM Projetos p
+LEFT JOIN Alocacao a ON p.Cod_Proj = a.Cod_Proj
+GROUP BY p.Cod_Proj;
+
+
+CREATE VIEW EmpregadosDepartamento AS
+SELECT e.Nome, e.Salario,
+       (SELECT AVG(Salario) FROM Empregados WHERE Cod_Depto = e.Cod_Depto) AS media_salarial
+FROM Empregados e;
