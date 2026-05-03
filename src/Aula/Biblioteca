@@ -1,0 +1,63 @@
+CREATE TABLE Autor (
+	Cod_autor INTEGER PRIMARY KEY, -- 'AUTOINCREMENT' não é necessário no SQLite
+	Nome_autor VARCHAR(100) NOT NULL, 
+	Nacionalidade varchar(70)
+);
+
+CREATE TABLE Livros (
+	ISBN VARCHAR(20) PRIMARY KEY, -- ISBN é uma STRING, não INTEGER/AUTOINCREMENT
+	Titulo VARCHAR(100) NOT NULL,
+	Ano_publicacao INTEGER,
+	Cod_autor INTEGER, -- Tipo ajustado para INTEGER (sem INT)
+	FOREIGN KEY (Cod_autor) REFERENCES Autor(Cod_autor)
+);
+
+CREATE TABLE Membros (
+	Id_membro INTEGER PRIMARY KEY, -- 'AUTOINCREMENT' removido
+	Nome_membro VARCHAR(100) NOT NULL,
+	Telefone_membro VARCHAR(20)
+);
+
+CREATE TABLE Emprestimo (
+    IdEmprestimo INTEGER PRIMARY KEY, -- 'AUTOINCREMENT' removido
+    ISBN VARCHAR(20), -- Tipo ajustado para VARCHAR para corresponder à tabela Livros
+    Id_membro INTEGER,
+    DataEmprestimo DATE NOT NULL,
+    DataDevolucao DATE,
+    FOREIGN KEY (ISBN) REFERENCES Livros(ISBN),
+    FOREIGN KEY (Id_membro) REFERENCES Membros(Id_membro)
+);
+
+
+-- Inserindo dados na tabela Autor (sem Cod_autor na lista, ele será gerado)
+-- Nota: Se você precisa garantir que 1, 2, 3... sejam os IDs, você pode MANTÊ-LOS na lista, 
+-- mas isso anula a função de auto-incremento. No código abaixo, vamos deixar o SGBD gerar (mais recomendado):
+
+INSERT INTO Autor (Nome_autor, Nacionalidade) VALUES
+('Machado de Assis', 'Brasil'),
+('Jane Austen', 'Inglaterra'),
+('George Orwell', 'Inglaterra'),
+('Gabriel García Márquez', 'Colômbia');
+
+-- Inserindo dados na tabela Livros (ISBN é manual e as chaves estrangeiras usam os novos IDs gerados, 1, 2, 3...)
+INSERT INTO Livros (ISBN, Titulo, Ano_publicacao, Cod_autor) VALUES
+('978-8571649645', 'Memórias Póstumas de Brás Cubas', 1881, 1),
+('978-0141439518', 'Orgulho e Preconceito', 1813, 2),
+('978-8535914877', '1984', 1949, 3),
+('978-8535902782', 'Cem Anos de Solidão', 1967, 4),
+('978-8580577778', 'Dom Casmurro', 1899, 1);
+
+
+-- Inserindo dados na tabela Membros (sem Id_membro na lista, ele será gerado como 1, 2, 3...)
+INSERT INTO Membros (Nome_membro, Telefone_membro) VALUES
+('Ana Silva', '99123-4567'),
+('Bruno Costa', '99876-5432'),
+('Carla Meirelles', '99555-1234');
+
+
+-- Inserindo dados na tabela Emprestimo (sem IdEmprestimo na lista, ele será gerado como 1, 2, 3...)
+INSERT INTO Emprestimo (ISBN, Id_membro, DataEmprestimo, DataDevolucao) VALUES
+('978-8535914877', 1, '2025-09-15', '2025-09-29'), -- Livro devolvido
+('978-8580577778', 2, '2025-09-20', NULL), -- Livro ainda emprestado
+('978-8535902782', 1, '2025-10-01', NULL), -- Livro ainda emprestado
+('978-8571649645', 3, '2025-10-02', NULL); -- Livro ainda emprestado
